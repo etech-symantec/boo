@@ -1,0 +1,33 @@
+name: Update Real Estate Data
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # 30분마다 실행
+  workflow_dispatch:         # 수동 실행 버튼
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 가져오기
+        uses: actions/checkout@v3
+
+      - name: Python 설치
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: 라이브러리 설치
+        run: pip install requests
+
+      - name: 크롤러 실행
+        run: python crawler.py
+
+      - name: 변경사항 커밋
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data.json
+          git commit -m "auto update data" || echo "no changes"
+          git push
