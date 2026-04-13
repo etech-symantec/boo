@@ -11,6 +11,7 @@ h1 { text-align:center; }
 .controls {
     margin-bottom:20px;
     display:flex;
+    flex-wrap: wrap;
     gap:10px;
 }
 
@@ -47,6 +48,9 @@ tr:hover { background:#f1f1f1; }
 <h1>🏢 부동산 매물 대시보드</h1>
 
 <div class="controls">
+    <input type="text" id="urlInput" placeholder="네이버 부동산 URL 입력" style="width:400px;">
+    <button onclick="loadFromURL()">불러오기</button>
+
     <input type="number" id="minPrice" placeholder="최소 가격(억)">
     <input type="number" id="maxPrice" placeholder="최대 가격(억)">
 
@@ -75,19 +79,50 @@ tr:hover { background:#f1f1f1; }
 
 <script>
 let globalData = [];
+let originalData = [];
 
+// 가격 파싱
 function parsePrice(priceStr) {
     if (!priceStr) return 0;
     return parseInt(priceStr.replace(/[^0-9]/g, ''));
 }
 
+// URL에서 complexNo 추출
+function extractComplexNo(url) {
+    const match = url.match(/complexes\/(\d+)/);
+    return match ? match[1] : null;
+}
+
+// URL 기반 필터링
+function loadFromURL() {
+    const url = document.getElementById("urlInput").value;
+    const complexNo = extractComplexNo(url);
+
+    if (!complexNo) {
+        alert("올바른 네이버 부동산 URL이 아닙니다.");
+        return;
+    }
+
+    // data.json 전체 데이터 중 complexNo로 필터
+    globalData = originalData.filter(item => item.complexNo === complexNo);
+
+    if (globalData.length === 0) {
+        alert("해당 단지 데이터가 없습니다.");
+    }
+
+    renderTable();
+}
+
+// 초기 데이터 로드
 fetch('data.json')
 .then(res => res.json())
 .then(data => {
+    originalData = data;
     globalData = data;
     renderTable();
 });
 
+// 테이블 렌더링
 function renderTable() {
     const tbody = document.getElementById("tableBody");
     tbody.innerHTML = "";
@@ -116,6 +151,7 @@ function renderTable() {
     });
 }
 
+// 정렬
 function sortTable(key) {
     globalData.sort((a, b) => {
         if (key === "price") {
