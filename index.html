@@ -5,7 +5,18 @@
 <title>부동산 매물 대시보드</title>
 
 <style>
-body { font-family: Arial; background:#f5f7fa; padding:20px; }
+body {
+    font-family: Arial;
+    background:#f5f7fa;
+    padding:20px;
+    transition:0.3s;
+}
+
+.dark {
+    background:#1e1e1e;
+    color:white;
+}
+
 h1 { text-align:center; }
 
 .controls {
@@ -15,7 +26,7 @@ h1 { text-align:center; }
     gap:10px;
 }
 
-input, select {
+input, select, button {
     padding:8px;
 }
 
@@ -23,6 +34,10 @@ table {
     width:100%;
     border-collapse: collapse;
     background:white;
+}
+
+.dark table {
+    background:#2c2c2c;
 }
 
 th, td {
@@ -39,7 +54,11 @@ th {
 
 .price { color:red; font-weight:bold; }
 
-tr:hover { background:#f1f1f1; }
+.star {
+    cursor:pointer;
+    font-size:18px;
+}
+
 </style>
 </head>
 
@@ -48,7 +67,7 @@ tr:hover { background:#f1f1f1; }
 <h1>🏢 부동산 매물 대시보드</h1>
 
 <div class="controls">
-    <input type="text" id="urlInput" placeholder="네이버 부동산 URL 입력" style="width:400px;">
+    <input type="text" id="urlInput" placeholder="네이버 부동산 URL">
     <button onclick="loadFromURL()">불러오기</button>
 
     <input type="number" id="minPrice" placeholder="최소 가격(억)">
@@ -61,11 +80,16 @@ tr:hover { background:#f1f1f1; }
     </select>
 
     <button onclick="renderTable()">검색</button>
+    <button onclick="downloadCSV()">CSV 다운로드</button>
+    <button onclick="toggleDark()">🌙 다크모드</button>
 </div>
+
+<div id="stats"></div>
 
 <table>
 <thead>
 <tr>
+<th>★</th>
 <th onclick="sortTable('dong')">동</th>
 <th onclick="sortTable('floor')">층</th>
 <th onclick="sortTable('area')">면적</th>
@@ -80,86 +104,119 @@ tr:hover { background:#f1f1f1; }
 <script>
 let globalData = [];
 let originalData = [];
+let favorites = JSON.parse(localStorage.getItem("fav") || "[]");
 
-// 가격 파싱
-function parsePrice(priceStr) {
-    if (!priceStr) return 0;
-    return parseInt(priceStr.replace(/[^0-9]/g, ''));
+function parsePrice(str){
+    return parseInt((str||"").replace(/[^0-9]/g,''))||0;
 }
 
-// URL에서 complexNo 추출
-function extractComplexNo(url) {
-    const match = url.match(/complexes\/(\d+)/);
-    return match ? match[1] : null;
+function extractComplexNo(url){
+    const m = url.match(/complexes\/(\d+)/);
+    return m ? m[1] : null;
 }
 
-// URL 기반 필터링
-function loadFromURL() {
+function loadFromURL(){
     const url = document.getElementById("urlInput").value;
-    const complexNo = extractComplexNo(url);
+    const c = extractComplexNo(url);
 
-    if (!complexNo) {
-        alert("올바른 네이버 부동산 URL이 아닙니다.");
+    if(!c){
+        alert("잘못된 URL");
         return;
     }
 
-    // data.json 전체 데이터 중 complexNo로 필터
-    globalData = originalData.filter(item => item.complexNo === complexNo);
+    globalData = originalData.filter(x=>x.complexNo===c);
 
-    if (globalData.length === 0) {
-        alert("해당 단지 데이터가 없습니다.");
-    }
+    let history = JSON.parse(localStorage.getItem("history")||"[]");
+    history.unshift(url);
+    localStorage.setItem("history", JSON.stringify(history.slice(0,5)));
 
     renderTable();
 }
 
-// 초기 데이터 로드
 fetch('data.json')
-.then(res => res.json())
-.then(data => {
-    originalData = data;
-    globalData = data;
+.then(r=>r.json())
+.then(d=>{
+    originalData = d;
+    globalData = d;
     renderTable();
 });
 
-// 테이블 렌더링
-function renderTable() {
+function renderTable(){
     const tbody = document.getElementById("tableBody");
-    tbody.innerHTML = "";
+    tbody.innerHTML="";
 
-    const min = document.getElementById("minPrice").value * 10000 || 0;
-    const max = document.getElementById("maxPrice").value * 10000 || Infinity;
+    const min = document.getElementById("minPrice").value*10000||0;
+    const max = document.getElementById("maxPrice").value*10000||Infinity;
     const area = document.getElementById("areaFilter").value;
 
-    const filtered = globalData.filter(item => {
-        const price = parsePrice(item.price);
-        return price >= min && price <= max &&
-               (!area || item.area.includes(area));
+    const filtered = globalData.filter(x=>{
+        const p = parsePrice(x.price);
+        return p>=min && p<=max && (!area||x.area.includes(area));
     });
 
-    filtered.forEach(item => {
+    // 통계
+    const prices = filtered.map(x=>parsePrice(x.price));
+    const avg = prices.reduce((a,b)=>a+b,0)/ (prices.length||1);
+
+    document.getElementById("stats").innerHTML =
+        `총 ${filtered.length}개 | 평균 ${(avg/10000).toFixed(1)}억`;
+
+    filtered.forEach(x=>{
+        const isFav = favorites.includes(x.link);
         const row = `
-        <tr onclick="window.open('${item.link}')">
-            <td>${item.dong}</td>
-            <td>${item.floor}</td>
-            <td>${item.area}</td>
-            <td class="price">${item.price}</td>
-            <td>${item.type}</td>
-            <td>${item.agent}</td>
+        <tr>
+            <td class="star" onclick="toggleFav('${x.link}')">
+                ${isFav ? '⭐' : '☆'}
+            </td>
+            <td onclick="go('${x.link}')">${x.dong}</td>
+            <td>${x.floor}</td>
+            <td>${x.area}</td>
+            <td class="price">${x.price}</td>
+            <td>${x.type}</td>
+            <td>${x.agent}</td>
         </tr>`;
         tbody.innerHTML += row;
     });
 }
 
-// 정렬
-function sortTable(key) {
-    globalData.sort((a, b) => {
-        if (key === "price") {
-            return parsePrice(a.price) - parsePrice(b.price);
-        }
-        return (a[key] || "").localeCompare(b[key] || "");
+function toggleFav(link){
+    if(favorites.includes(link)){
+        favorites = favorites.filter(x=>x!==link);
+    } else {
+        favorites.push(link);
+    }
+    localStorage.setItem("fav", JSON.stringify(favorites));
+    renderTable();
+}
+
+function go(url){
+    window.open(url);
+}
+
+function sortTable(key){
+    globalData.sort((a,b)=>{
+        if(key==="price") return parsePrice(a.price)-parsePrice(b.price);
+        return (a[key]||"").localeCompare(b[key]||"");
     });
     renderTable();
+}
+
+function downloadCSV(){
+    let csv = "동,층,면적,가격,유형,부동산\n";
+
+    globalData.forEach(x=>{
+        csv += `${x.dong},${x.floor},${x.area},${x.price},${x.type},${x.agent}\n`;
+    });
+
+    const blob = new Blob([csv]);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "realestate.csv";
+    a.click();
+}
+
+function toggleDark(){
+    document.body.classList.toggle("dark");
 }
 </script>
 
