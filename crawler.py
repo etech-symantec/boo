@@ -1,7 +1,6 @@
 import requests
 import json
 
-# 여러 단지 한번에 처리 가능
 COMPLEX_LIST = ["3748"]
 
 
@@ -12,20 +11,40 @@ def get_articles(complex_no):
         "complexNo": complex_no,
         "tradeType": "A1",   # 매매
         "realEstateType": "APT",
+        "tag": "::::::::",
+        "rentPriceMin": 0,
+        "rentPriceMax": 900000000,
+        "priceMin": 0,
+        "priceMax": 900000000,
+        "areaMin": 0,
+        "areaMax": 999999,
         "page": 1
     }
 
     headers = {
         "User-Agent": "Mozilla/5.0",
-        "Referer": "https://new.land.naver.com/"
+        "Referer": f"https://new.land.naver.com/complexes/{complex_no}",
+        "Accept-Language": "ko-KR,ko;q=0.9"
     }
 
     res = requests.get(url, params=params, headers=headers)
+
+    print("status:", res.status_code)
+    print("response:", res.text[:200])  # 디버깅용
+
+    if res.status_code != 200:
+        return []
+
     data = res.json()
+
+    article_list = data.get("articleList", [])
+
+    if not article_list:
+        print("❗ 매물 없음 (파라미터 문제 가능)")
 
     result = []
 
-    for item in data.get("articleList", []):
+    for item in article_list:
         result.append({
             "complexNo": str(complex_no),
             "dong": item.get("buildingName"),
@@ -44,12 +63,14 @@ def main():
     all_data = []
 
     for c in COMPLEX_LIST:
-        all_data.extend(get_articles(c))
+        data = get_articles(c)
+        print(f"{c} → {len(data)}개 수집")
+        all_data.extend(data)
 
     with open("data.json", "w", encoding="utf-8") as f:
         json.dump(all_data, f, ensure_ascii=False, indent=2)
 
-    print("data.json 업데이트 완료")
+    print("✅ data.json 업데이트 완료")
 
 
 if __name__ == "__main__":
