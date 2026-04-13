@@ -1,5 +1,6 @@
 [
   {
+    "complexNo": "3748",
     "dong": "101동",
     "floor": "10층",
     "area": "84㎡",
@@ -9,6 +10,7 @@
     "link": "https://new.land.naver.com/articles/123456"
   },
   {
+    "complexNo": "3748",
     "dong": "102동",
     "floor": "5층",
     "area": "59㎡",
@@ -16,5 +18,15 @@
     "type": "매매",
     "agent": "미래공인",
     "link": "https://new.land.naver.com/articles/123457"
+  },
+  {
+    "complexNo": "9999",
+    "dong": "201동",
+    "floor": "7층",
+    "area": "84㎡",
+    "price": "9억",
+    "type": "매매",
+    "agent": "다른단지부동산",
+    "link": "https://new.land.naver.com/articles/999999"
   }
 ]
