@@ -1,0 +1,20 @@
+[
+  {
+    "dong": "101동",
+    "floor": "10층",
+    "area": "84㎡",
+    "price": "8억 5,000",
+    "type": "매매",
+    "agent": "행복부동산",
+    "link": "https://new.land.naver.com/articles/123456"
+  },
+  {
+    "dong": "102동",
+    "floor": "5층",
+    "area": "59㎡",
+    "price": "6억 8,000",
+    "type": "매매",
+    "agent": "미래공인",
+    "link": "https://new.land.naver.com/articles/123457"
+  }
+]
