@@ -133,7 +133,7 @@ function loadFromURL(){
     renderTable();
 }
 
-fetch('data.json')
+fetch('data.json?cache=' + new Date().getTime())
 .then(r=>r.json())
 .then(d=>{
     originalData = d;
